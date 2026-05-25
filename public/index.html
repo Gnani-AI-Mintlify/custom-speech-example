@@ -560,18 +560,18 @@ function flushFrames() {
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 function connectWs(onOpen) {
-  const url    = wsUrlInput.value.trim();
-  const apiKey = apiKeyInput.value.trim();
+  const baseUrl = wsUrlInput.value.trim();
+  const apiKey  = apiKeyInput.value.trim();
 
-  if (!url) { showError('Enter the adapter WebSocket URL first'); return; }
+  if (!baseUrl) { showError('Enter the adapter WebSocket URL first'); return; }
+
+  // Browser WebSocket API does not support custom headers.
+  // Pass the API key as a query param (?key=) instead.
+  // app.js accepts either Authorization: Bearer header (Cognigy VG) or ?key= (browser demo).
+  const url = apiKey ? `${baseUrl}?key=${encodeURIComponent(apiKey)}` : baseUrl;
 
   setStatus('connecting…');
-  ws = new WebSocket(url, [], { headers: { Authorization: `Bearer ${apiKey}` } });
-
-  // Note: browser WebSocket API doesn't support custom headers natively.
-  // The Authorization header is sent via the subprotocol trick below.
-  // For self-hosted adapters accessible via wss, the API_KEY check in app.js
-  // allows empty/missing auth header gracefully (isValidApiKey returns true when no Bearer found).
+  ws = new WebSocket(url);
 
   ws.binaryType = 'arraybuffer';
 

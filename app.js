@@ -12,6 +12,12 @@ const isValidApiKey = (hdr, apiKey) => {
   return !arr || arr[1] === process.env.API_KEY;
 };
 
+const isValidQueryKey = (requestUrl) => {
+  const url = new URL(requestUrl, 'http://localhost');
+  const queryKey = url.searchParams.get('key');
+  return queryKey === process.env.API_KEY;
+};
+
 const verifyApiKey = (req, res, next) => {
   if (!isValidApiKey(req.headers['authorization'], process.env.API_KEY)) {
     return res.status(403).json({ message: 'Forbidden' });
@@ -59,9 +65,16 @@ server.on('upgrade', (request, socket, head) => {
     return socket.write('HTTP/1.1 404 Not Found \r\n\r\n', () => socket.destroy());
   }
 
-  /* verify the api key */
-  if (!isValidApiKey(request.headers['authorization'], process.env.API_KEY)) {
-    logger.info(`invalid auth header: ${request.headers['authorization']}`);
+  /* verify the api key —
+     Cognigy VG sends:        Authorization: Bearer <API_KEY>   (header-based)
+     Browser demo sends:      wss://...?key=<API_KEY>           (query param)
+     Either is accepted; both missing = reject.
+  */
+  const validHeader = isValidApiKey(request.headers['authorization'], process.env.API_KEY);
+  const validQuery  = isValidQueryKey(request.url);
+
+  if (!validHeader && !validQuery) {
+    logger.info(`rejected WS — invalid auth. url: ${request.url}`);
     return socket.write('HTTP/1.1 403 Forbidden \r\n\r\n', () => socket.destroy());
   }
 
