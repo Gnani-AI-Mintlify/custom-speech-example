@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vachana STT — Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #07080d;
+    --surface:   #0e1018;
+    --border:    #1e2230;
+    --accent:    #00e5be;
+    --accent2:   #7c6dfa;
+    --danger:    #ff4d6d;
+    --text:      #e8eaf0;
+    --muted:     #5a6075;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* ── background grid ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; width: 100%; max-width: 860px; padding: 0 24px 80px; }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 48px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 56px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+  .logo-sub { font-size: 0.7rem; color: var(--muted); font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; }
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--muted);
+  }
+
+  /* ── config strip ── */
+  .config-strip {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    margin-bottom: 48px;
+    align-items: end;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .field input, .field select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface); }
+
+  /* ── visualizer ── */
+  .viz-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+  #waveCanvas {
+    width: 100%;
+    height: 80px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: block;
+  }
+  .viz-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .viz-label.hidden { opacity: 0; }
+
+  /* ── record button ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 48px;
+  }
+  #recordBtn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 32px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+    background: var(--accent);
+    color: #07080d;
+  }
+  #recordBtn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+  #recordBtn:active { transform: translateY(0); }
+  #recordBtn.recording {
+    background: var(--danger);
+    color: #fff;
+    animation: pulse-btn 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse-btn {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,77,109,0.5); }
+    50%       { box-shadow: 0 0 0 12px rgba(255,77,109,0); }
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .dot.blink { animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── status pill ── */
+  #statusPill {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--surface);
+    transition: all 0.3s;
+  }
+  #statusPill.connected    { border-color: var(--accent); color: var(--accent); }
+  #statusPill.recording    { border-color: var(--danger); color: var(--danger); }
+  #statusPill.error        { border-color: #ff6b35; color: #ff6b35; }
+
+  /* ── transcript ── */
+  .transcript-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .transcript-title {
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  #clearBtn {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-mono); font-size: 0.65rem;
+    color: var(--muted); letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 4px 8px;
+    border-radius: 4px; transition: color 0.2s;
+  }
+  #clearBtn:hover { color: var(--text); }
+
+  #transcriptBox {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-height: 220px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+  }
+  #transcriptBox::-webkit-scrollbar { width: 4px; }
+  #transcriptBox::-webkit-scrollbar-track { background: transparent; }
+  #transcriptBox::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .transcript-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 180px;
+    gap: 10px;
+    color: var(--muted);
+  }
+  .transcript-empty svg { opacity: 0.3; }
+  .transcript-empty p {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  .transcript-entry {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    animation: slide-up 0.3s ease;
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .entry-meta {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    padding-top: 2px; min-width: 52px;
+  }
+  .entry-time {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .entry-lang {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--accent2);
+    background: rgba(124,109,250,0.12);
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .entry-text {
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    font-weight: 400;
+    line-height: 1.65;
+    color: var(--text);
+    border-left: 2px solid var(--accent);
+    padding-left: 14px;
+    word-break: break-word;
+  }
+
+  /* ── stats bar ── */
+  .stats-bar {
+    display: flex; gap: 24px;
+    margin-top: 16px;
+    padding: 0 4px;
+  }
+  .stat {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stat strong { color: var(--text); font-weight: 500; }
+
+  /* ── error toast ── */
+  #errorToast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1a0810; border: 1px solid var(--danger);
+    color: var(--danger); padding: 10px 20px;
+    border-radius: 8px; font-family: var(--font-mono); font-size: 0.75rem;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
+    white-space: nowrap;
+  }
+  #errorToast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- header -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 2C10 2 4 5 4 10C4 13.5 6.5 16.5 10 18C13.5 16.5 16 13.5 16 10C16 5 10 2 10 2Z" fill="#07080d"/>
+          <rect x="7" y="8" width="2" height="6" rx="1" fill="#07080d"/>
+          <rect x="11" y="6" width="2" height="8" rx="1" fill="#07080d"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-title">Vachana STT</div>
+        <div class="logo-sub">by Gnani.ai</div>
+      </div>
+    </div>
+    <div class="badge">Live Demo</div>
+  </header>
+
+  <!-- config -->
+  <div class="config-strip">
+    <div class="field" style="grid-column: 1 / -1">
+      <label>Adapter WebSocket URL</label>
+      <input type="text" id="wsUrl" placeholder="wss://your-domain/transcribe/gnani" value="" />
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="Bearer token" />
+    </div>
+    <div class="field">
+      <label>Language</label>
+      <select id="langCode">
+        <option value="hi-IN">Hindi (hi-IN)</option>
+        <option value="en-IN" selected>English India (en-IN)</option>
+        <option value="ta-IN">Tamil (ta-IN)</option>
+        <option value="te-IN">Telugu (te-IN)</option>
+        <option value="kn-IN">Kannada (kn-IN)</option>
+        <option value="ml-IN">Malayalam (ml-IN)</option>
+        <option value="mr-IN">Marathi (mr-IN)</option>
+        <option value="bn-IN">Bengali (bn-IN)</option>
+        <option value="gu-IN">Gujarati (gu-IN)</option>
+        <option value="pa-IN">Punjabi (pa-IN)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- waveform -->
+  <div class="viz-wrap">
+    <canvas id="waveCanvas" height="80"></canvas>
+    <span class="viz-label" id="vizLabel">mic waveform appears here</span>
+  </div>
+
+  <!-- controls -->
+  <div class="controls">
+    <button id="recordBtn">
+      <span class="dot" id="dot"></span>
+      <span id="btnLabel">Start Recording</span>
+    </button>
+    <div id="statusPill">idle</div>
+  </div>
+
+  <!-- transcript -->
+  <div class="transcript-header">
+    <span class="transcript-title">Live Transcripts</span>
+    <button id="clearBtn">Clear</button>
+  </div>
+  <div id="transcriptBox">
+    <div class="transcript-empty" id="emptyState">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <rect x="4" y="10" width="24" height="16" rx="3" stroke="#5a6075" stroke-width="1.5"/>
+        <path d="M10 6h12M13 6v4M19 6v4" stroke="#5a6075" stroke-width="1.5" stroke-linecap="round"/>
+        <rect x="9" y="15" width="4" height="6" rx="1" fill="#5a6075"/>
+        <rect x="19" y="13" width="4" height="8" rx="1" fill="#5a6075"/>
+      </svg>
+      <p>Transcripts will appear here<br/>as you speak</p>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat">Segments: <strong id="statCount">0</strong></div>
+    <div class="stat">Latency: <strong id="statLatency">—</strong></div>
+    <div class="stat">Duration: <strong id="statDuration">0s</strong></div>
+  </div>
+
+</div>
+
+<div id="errorToast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let ws = null;
+let audioCtx = null;
+let mediaStream = null;
+let processor = null;
+let analyser = null;
+let animFrame = null;
+let isRecording = false;
+let segmentCount = 0;
+let recordStart = null;
+let durationInterval = null;
+let audioBuffer8k = [];  // accumulated Int16 samples at 8kHz
+const FRAME_BYTES = 1024;
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const recordBtn    = document.getElementById('recordBtn');
+const btnLabel     = document.getElementById('btnLabel');
+const dot          = document.getElementById('dot');
+const statusPill   = document.getElementById('statusPill');
+const transcriptBox= document.getElementById('transcriptBox');
+const emptyState   = document.getElementById('emptyState');
+const clearBtn     = document.getElementById('clearBtn');
+const waveCanvas   = document.getElementById('waveCanvas');
+const vizLabel     = document.getElementById('vizLabel');
+const statCount    = document.getElementById('statCount');
+const statLatency  = document.getElementById('statLatency');
+const statDuration = document.getElementById('statDuration');
+const errorToast   = document.getElementById('errorToast');
+const wsUrlInput   = document.getElementById('wsUrl');
+const apiKeyInput  = document.getElementById('apiKey');
+const langSelect   = document.getElementById('langCode');
+const ctx          = waveCanvas.getContext('2d');
+
+// ── Canvas sizing ─────────────────────────────────────────────────────────────
+function resizeCanvas() {
+  waveCanvas.width  = waveCanvas.offsetWidth  * devicePixelRatio;
+  waveCanvas.height = waveCanvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ── Error toast ───────────────────────────────────────────────────────────────
+function showError(msg) {
+  errorToast.textContent = msg;
+  errorToast.classList.add('show');
+  setTimeout(() => errorToast.classList.remove('show'), 4000);
+}
+
+// ── Status pill ───────────────────────────────────────────────────────────────
+function setStatus(text, cls) {
+  statusPill.textContent = text;
+  statusPill.className = cls || '';
+}
+
+// ── Waveform drawing ──────────────────────────────────────────────────────────
+function drawIdle() {
+  const w = waveCanvas.offsetWidth;
+  const h = waveCanvas.offsetHeight;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(30,34,48,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h / 2);
+  ctx.stroke();
+}
+
+function drawWaveform(analyserNode) {
+  const w = waveCanvas.offsetWidth;
+  const h = waveCanvas.offsetHeight;
+  const bufLen = analyserNode.fftSize;
+  const dataArr = new Uint8Array(bufLen);
+  analyserNode.getByteTimeDomainData(dataArr);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Gradient stroke
+  const grad = ctx.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0,   'rgba(0,229,190,0.2)');
+  grad.addColorStop(0.5, 'rgba(0,229,190,1)');
+  grad.addColorStop(1,   'rgba(0,229,190,0.2)');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+
+  const sliceW = w / bufLen;
+  let x = 0;
+  for (let i = 0; i < bufLen; i++) {
+    const v = dataArr[i] / 128.0;
+    const y = (v * h) / 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    x += sliceW;
+  }
+  ctx.stroke();
+  animFrame = requestAnimationFrame(() => drawWaveform(analyserNode));
+}
+
+drawIdle();
+
+// ── Downsample float32 → Int16 at 8kHz ───────────────────────────────────────
+function downsampleToInt16(float32Buf, fromRate, toRate) {
+  if (fromRate === toRate) {
+    const out = new Int16Array(float32Buf.length);
+    for (let i = 0; i < float32Buf.length; i++) {
+      out[i] = Math.max(-32768, Math.min(32767, float32Buf[i] * 32767));
+    }
+    return out;
+  }
+  const ratio    = fromRate / toRate;
+  const newLen   = Math.floor(float32Buf.length / ratio);
+  const out      = new Int16Array(newLen);
+  for (let i = 0; i < newLen; i++) {
+    const start = Math.floor(i * ratio);
+    const end   = Math.floor((i + 1) * ratio);
+    let sum = 0;
+    for (let j = start; j < end && j < float32Buf.length; j++) sum += float32Buf[j];
+    const avg = sum / (end - start);
+    out[i] = Math.max(-32768, Math.min(32767, avg * 32767));
+  }
+  return out;
+}
+
+// ── Flush accumulated Int16 samples as 1024-byte frames ──────────────────────
+function flushFrames() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  // Merge accumulated buffers
+  const total = audioBuffer8k.reduce((a, b) => a + b.length, 0);
+  const merged = new Int16Array(total);
+  let offset = 0;
+  for (const chunk of audioBuffer8k) { merged.set(chunk, offset); offset += chunk.length; }
+  audioBuffer8k = [];
+
+  // Int16Array — each sample is 2 bytes, so FRAME_BYTES = 512 samples
+  const frameSamples = FRAME_BYTES / 2;
+  let i = 0;
+  while (i + frameSamples <= merged.length) {
+    ws.send(merged.slice(i, i + frameSamples).buffer);
+    i += frameSamples;
+  }
+  // Keep leftover
+  if (i < merged.length) audioBuffer8k = [merged.slice(i)];
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function connectWs(onOpen) {
+  const url    = wsUrlInput.value.trim();
+  const apiKey = apiKeyInput.value.trim();
+
+  if (!url) { showError('Enter the adapter WebSocket URL first'); return; }
+
+  setStatus('connecting…');
+  ws = new WebSocket(url, [], { headers: { Authorization: `Bearer ${apiKey}` } });
+
+  // Note: browser WebSocket API doesn't support custom headers natively.
+  // The Authorization header is sent via the subprotocol trick below.
+  // For self-hosted adapters accessible via wss, the API_KEY check in app.js
+  // allows empty/missing auth header gracefully (isValidApiKey returns true when no Bearer found).
+
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    setStatus('connected', 'connected');
+    onOpen && onOpen();
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+
+    if (msg.type === 'transcription' && msg.alternatives?.length) {
+      const text = msg.alternatives[0].transcript?.trim();
+      if (!text) return;
+      addTranscript(text, msg.language || langSelect.value);
+      segmentCount++;
+      statCount.textContent = segmentCount;
+      // estimate latency from segment
+      if (msg.latency) statLatency.textContent = msg.latency + 'ms';
+    }
+
+    if (msg.type === 'error') {
+      showError(`Adapter error: ${msg.error}`);
+    }
+  };
+
+  ws.onerror = () => {
+    showError('WebSocket error — check URL and API key');
+    setStatus('error', 'error');
+    stopRecording();
+  };
+
+  ws.onclose = () => {
+    if (isRecording) stopRecording();
+    setStatus('idle');
+  };
+}
+
+// ── Add transcript entry ──────────────────────────────────────────────────────
+function addTranscript(text, lang) {
+  emptyState.style.display = 'none';
+
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const entry = document.createElement('div');
+  entry.className = 'transcript-entry';
+  entry.innerHTML = `
+    <div class="entry-meta">
+      <span class="entry-time">${time}</span>
+      <span class="entry-lang">${lang}</span>
+    </div>
+    <div class="entry-text">${escapeHtml(text)}</div>
+  `;
+  transcriptBox.appendChild(entry);
+  transcriptBox.scrollTop = transcriptBox.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Start recording ───────────────────────────────────────────────────────────
+async function startRecording() {
+  if (isRecording) return;
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    showError('Microphone access denied');
+    return;
+  }
+
+  // Wait for WS before sending audio
+  connectWs(() => {
+    // Send start control message
+    ws.send(JSON.stringify({
+      type:           'start',
+      language:       langSelect.value,
+      sampleRateHz:   8000,
+      encoding:       'LINEAR16',
+      interimResults: false,
+      options:        {},
+    }));
+
+    // Set up audio pipeline
+    audioCtx  = new AudioContext();
+    analyser  = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+
+    const source = audioCtx.createMediaStreamSource(mediaStream);
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+    source.connect(analyser);
+    source.connect(processor);
+    processor.connect(audioCtx.destination);
+
+    processor.onaudioprocess = (e) => {
+      if (!isRecording) return;
+      const float32 = e.inputBuffer.getChannelData(0);
+      const samples = downsampleToInt16(float32, audioCtx.sampleRate, 8000);
+      audioBuffer8k.push(samples);
+      flushFrames();
+    };
+
+    // Waveform
+    vizLabel.classList.add('hidden');
+    if (animFrame) cancelAnimationFrame(animFrame);
+    drawWaveform(analyser);
+
+    // UI
+    isRecording = true;
+    recordBtn.classList.add('recording');
+    btnLabel.textContent = 'Stop Recording';
+    dot.classList.add('blink');
+    setStatus('recording', 'recording');
+
+    // Duration counter
+    recordStart = Date.now();
+    durationInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - recordStart) / 1000);
+      statDuration.textContent = s + 's';
+    }, 500);
+  });
+}
+
+// ── Stop recording ────────────────────────────────────────────────────────────
+function stopRecording() {
+  if (!isRecording && !mediaStream) return;
+  isRecording = false;
+
+  clearInterval(durationInterval);
+
+  if (animFrame) cancelAnimationFrame(animFrame);
+  drawIdle();
+  vizLabel.classList.remove('hidden');
+
+  if (processor) { processor.disconnect(); processor = null; }
+  if (audioCtx)  { audioCtx.close(); audioCtx = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+
+  // Flush leftover audio then stop
+  flushFrames();
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    setTimeout(() => {
+      ws.send(JSON.stringify({ type: 'stop' }));
+      ws.close(1000);
+    }, 600);
+  }
+
+  recordBtn.classList.remove('recording');
+  btnLabel.textContent = 'Start Recording';
+  dot.classList.remove('blink');
+  setStatus('idle');
+  audioBuffer8k = [];
+}
+
+// ── Button handler ────────────────────────────────────────────────────────────
+recordBtn.addEventListener('click', () => {
+  isRecording ? stopRecording() : startRecording();
+});
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+clearBtn.addEventListener('click', () => {
+  const entries = transcriptBox.querySelectorAll('.transcript-entry');
+  entries.forEach(e => e.remove());
+  emptyState.style.display = '';
+  segmentCount = 0;
+  statCount.textContent = '0';
+  statLatency.textContent = '—';
+  statDuration.textContent = '0s';
+});
+
+// ── Pre-fill URL from localStorage ───────────────────────────────────────────
+const savedUrl = localStorage.getItem('gnani_ws_url');
+if (savedUrl) wsUrlInput.value = savedUrl;
+wsUrlInput.addEventListener('input', () => localStorage.setItem('gnani_ws_url', wsUrlInput.value));
+</script>
+</body>
+</html>

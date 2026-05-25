@@ -35,6 +35,7 @@ ttsWsServer.on('connection', ttsStreaming.bind(null, logger));
 /* set up the http server for the TTS api */
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.static('public'));
 app.use('/synthesize', verifyApiKey, routes);
 app.use((err, req, res, next) => {
   logger.error(err, 'burped error');
