@@ -8,8 +8,9 @@ const routes = require('./lib/tts');
 app.locals = {...app.locals, logger};
 
 const isValidApiKey = (hdr, apiKey) => {
+  if (!apiKey) return true; // no API_KEY configured — allow all (dev mode)
   const arr = /^Bearer (.*)$/.exec(hdr);
-  return !arr || arr[1] === process.env.API_KEY;
+  return (arr && arr[1] === apiKey);
 };
 
 const isValidQueryKey = (requestUrl) => {
