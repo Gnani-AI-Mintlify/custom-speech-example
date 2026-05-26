@@ -352,8 +352,12 @@
       <input type="text" id="wsUrl" placeholder="wss://your-domain/transcribe/gnani" value="" />
     </div>
     <div class="field">
-      <label>API Key</label>
-      <input type="password" id="apiKey" placeholder="Bearer token" />
+      <label>Adapter API Key</label>
+      <input type="password" id="apiKey" placeholder="Adapter bearer token" />
+    </div>
+    <div class="field">
+      <label>Vachana API Key</label>
+      <input type="password" id="gnaniKey" placeholder="Your Vachana API key" />
     </div>
     <div class="field">
       <label>Language</label>
@@ -444,6 +448,7 @@ const statDuration = document.getElementById('statDuration');
 const errorToast   = document.getElementById('errorToast');
 const wsUrlInput   = document.getElementById('wsUrl');
 const apiKeyInput  = document.getElementById('apiKey');
+const gnaniKeyInput= document.getElementById('gnaniKey');
 const langSelect   = document.getElementById('langCode');
 const ctx          = waveCanvas.getContext('2d');
 
@@ -560,18 +565,21 @@ function flushFrames() {
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 function connectWs(onOpen) {
-  const baseUrl = wsUrlInput.value.trim();
-  const apiKey  = apiKeyInput.value.trim();
+  const baseUrl  = wsUrlInput.value.trim();
+  const apiKey   = apiKeyInput.value.trim();
+  const gnaniKey = gnaniKeyInput.value.trim();
 
-  if (!baseUrl) { showError('Enter the adapter WebSocket URL first'); return; }
+  if (!baseUrl)  { showError('Enter the adapter WebSocket URL first'); return; }
+  if (!gnaniKey) { showError('Enter your Vachana API key'); return; }
 
   // Browser WebSocket API does not support custom headers.
-  // Pass the API key as a query param (?key=) instead.
-  // app.js accepts either Authorization: Bearer header (Cognigy VG) or ?key= (browser demo).
-  const url = apiKey ? `${baseUrl}?key=${encodeURIComponent(apiKey)}` : baseUrl;
+  // Pass both keys as query params — adapter validates ?key=, forwards ?gnani_key= to Vachana.
+  const urlObj = new URL(baseUrl);
+  if (apiKey)   urlObj.searchParams.set('key',       apiKey);
+  if (gnaniKey) urlObj.searchParams.set('gnani_key', gnaniKey);
 
   setStatus('connecting…');
-  ws = new WebSocket(url);
+  ws = new WebSocket(urlObj.toString());
 
   ws.binaryType = 'arraybuffer';
 
